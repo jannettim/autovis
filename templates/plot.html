@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv='content-type' content='text/html; charset=utf-8' />
+
+    <title>Embed Demo</title>
+
+    {{ js_resources|indent(4)|safe }}
+
+    {{ css_resources|indent(4)|safe }}
+
+    {{ plot_script|indent(4)|safe }}
+
+  </head>
+  <body>
+    <form name="color_button" method='GET'>
+        Color:
+        <select name="color">
+            {% for o in options_list %}
+                <option value="{{ o }}" {% if color==o %} selected="selected" {% endif %}>{{ o }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        Width: <input type="text" name="plot_width" value="{{ plot_width }}">
+        <br>
+        Height: <input type="text" name="plot_height" value="{{ plot_height }}">
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+    {{ plot_div|indent(4)|safe }}
+    <div style="width:{{plot_width}}px">
+        {{ dot_slider|indent(4)|safe }}
+    </div>
+  </body>
+</html>
