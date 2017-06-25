@@ -15,19 +15,11 @@
   </head>
   <body>
     <form name="color_button" method='GET'>
-        Color:
-        <select name="color">
-            {% for o in options_list %}
-                <option value="{{ o }}" {% if color==o %} selected="selected" {% endif %}>{{ o }}</option>
-            {% endfor %}
-        </select>
-        <br>
         Width: <input type="text" name="plot_width" value="{{ plot_width }}">
-        <br>
         Height: <input type="text" name="plot_height" value="{{ plot_height }}">
-        <br>
         <button type="submit">Submit</button>
     </form>
+    <div style="width:100px">{{ pal_select|indent(4)|safe }}</div>
     {{ plot_div|indent(4)|safe }}
     <div style="width:{{plot_width}}px">
         {{ dot_slider|indent(4)|safe }}

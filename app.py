@@ -3,7 +3,6 @@ import graphs
 from bokeh.util.string import encode_utf8
 import pandas as pd
 import numpy as np
-from matplotlib import pyplot
 
 app = Flask(__name__)
 
@@ -15,10 +14,6 @@ def getitem(obj, item, default):
 
     else:
         return obj[item]
-
-def list_palettes():
-
-    return pyplot.colormaps()
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -34,8 +29,8 @@ def render_plot():
     script, div, js_resources, css_resources = graphs.plot_scatter(df[["x1", "x2"]], df[["y1", "y2"]], palette=palette,
                                                                    plot_height=int(height), plot_width=int(width))
 
-    html = render_template("plot.html", options_list=list_palettes(), plot_script=script, plot_div=div["p"],
-                           dot_slider=div["dot_size_slider"],
+    html = render_template("plot.html", plot_script=script, plot_div=div["p"],
+                           dot_slider=div["dot_size_slider"], pal_select=div["pal"],
                            js_resources=js_resources, css_resources=css_resources, _from=10, _to=0, color=palette,
                            plot_height=height, plot_width=width)
 
