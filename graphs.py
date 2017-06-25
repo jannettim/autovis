@@ -110,20 +110,6 @@ def plot_scatter(x, y, **kwargs):
 
         source.change.emit()
 
-    # [u'#7fc97f', u'#bdaed3']
-
-    # pal = []
-    # for d in data["color"]:
-    #
-    #     if d not in pal:
-    #         pal.append(d)
-    #
-    # pal_map = dict()
-    #
-    # for c in pal:
-    #     pal_map.update({c: "#3a5254"})
-    # new_pal[pal.index(p)]
-
     dot_size_slider = Slider(start=0, end=100, value=1, step=1, title="Dot Size",
                              callback=CustomJS.from_py_func(callback))
     select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"],
