@@ -1,8 +1,9 @@
 import seaborn
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper
+from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput
 from bokeh.client import push_session, ClientSession
+from bokeh.models.glyphs import VBar
 from matplotlib import pyplot
 from bokeh.layouts import layout, row
 from math import floor, ceil
@@ -94,6 +95,7 @@ class GraphPlot:
         self.col_source = ColumnDataSource(data=self.palettes)
 
         self.graph = None
+        self.p = None
 
     def palette_maps(self, n_colors):
 
@@ -113,13 +115,18 @@ class GraphPlot:
         self.palette = self.palettes[new]
 
         self.colors = self.palette * self.num_mod
-        print(self.colors)
         curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
 
     def change_dot_size(self, attr, old, new):
 
         self.graph.glyph.size = new
         curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+
+    def change_figure_title(self, attr, old, new):
+
+        print(self.p.title)
+        self.p.title.text = new
+        self.update(self.source.data["x"], self.source.data["y"], self.source.data["color"])
 
     def update(self, x, y, c):
 
@@ -131,24 +138,41 @@ class GraphPlot:
 
     def plot_scatter(self):
 
-        p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
 
-        self.graph = p.scatter('x', 'y', color="color", source=self.source)
+        self.graph = self.p.scatter('x', 'y', color="color", source=self.source)
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
+        title_text = TextInput(placeholder="Figure Title")
 
         dot_size_slider = Slider(start=1, end=100, value=1, step=1, title="Dot Size")
         dot_size_slider.on_change("value", self.change_dot_size)
         select_pal.on_change("value", self.change_palette)
+        title_text.on_change("value", self.change_figure_title)
+
+        app_layout = layout([[title_text],
+                             [self.p],
+                             [select_pal],
+                             [dot_size_slider]])
+        return app_layout
+
+    def plot_bar(self):
+
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
+        self.graph = self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source, line_color="black")
+
+        select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
+
+        select_pal.on_change("value", self.change_palette)
 
         app_layout = layout([[select_pal],
-                             [p],
-                             [dot_size_slider]])
+                            [self.p]])
+
         return app_layout
 
 
 df = pd.DataFrame(np.random.randn(10, 4), columns=["x1", "x2", "y1", "y2"])
-gp = GraphPlot(df[["x1", "x2"]], df[["y1", "y2"]], palette="Accent", plot_width=600, plot_height=600)
+gp = GraphPlot(df[["x1", "x2"]], df["y1"], palette="Accent", plot_width=600, plot_height=600)
 
 app_layout = gp.plot_scatter()
 
