@@ -152,26 +152,57 @@ class GraphPlot:
 
             else:
 
-                self.graph.glyph.line_color = self.palette[0]
+                self.graph.glyph.fill_color = self.palette[0]
                 self.colors = self.palette[0] * len(self.source.data["colors"])
                 curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
 
+
         except AttributeError:
-            if self.group is not None:
 
-                self.colors = self.palette * len(self.group)
-                curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+            try:
 
-            else:
+                if self.group is not None:
 
-                self.colors = self.palette * self.num_mod
+                    self.colors = self.palette
+                    curdoc().add_next_tick_callback(
+                        partial(self.update, x=self.xs, y=self.ys, c=self.colors, g=self.group))
 
-                curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+                else:
+
+                    self.graph.glyph.line_color = self.palette[0]
+                    self.colors = self.palette[0] * len(self.source.data["colors"])
+                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+
+
+            except AttributeError:
+
+                if self.group is not None:
+
+                    self.colors = self.palette * len(self.group)
+                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+
+                else:
+
+                    self.colors = self.palette * self.num_mod
+
+                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
 
     def change_dot_size(self, attr, old, new):
 
         self.graph.glyph.size = new
         curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+
+    def change_line_thick(self, attr, old, new):
+
+        self.graph.glyph.line_width = new
+
+        if self.group is not None:
+
+            curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.palette, g=self.group))
+
+        else:
+            curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+
 
     def change_figure_title(self, attr, old, new):
 
@@ -186,7 +217,7 @@ class GraphPlot:
         self.source.data["x"] = []
         self.source.data["y"] = []
 
-        if g is not None:
+        if self.group is not None:
 
             self.source.data["group"] = []
             self.source.stream(dict(x=x, y=y, color=c, group=g))
@@ -218,7 +249,33 @@ class GraphPlot:
     def plot_bar(self):
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
-        self.graph = self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source, line_color="black")
+
+        if self.group is not None:
+
+            for g in self.source.data["group"]:
+
+                if self.group.index(g) % 2 == 0:
+
+
+                    self.source.data["x"][self.group.index(g)] = [x + .2*self.group.index(g) for x in self.source.data["x"][self.group.index(g)]]
+
+                else:
+                    self.source.data["x"][self.group.index(g)] = [x - .2*self.group.index(g) for x in self.source.data["x"][self.group.index(g)]]
+
+                temp_source = ColumnDataSource(data=dict(x=self.source.data["x"][self.group.index(g)],
+                                                         y=self.source.data["y"][self.group.index(g)],
+                                                         color=[self.source.data["color"][self.group.index(g)],]*
+                                                               len(self.source.data["x"][self.group.index(g)])))
+
+                self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=temp_source,
+                            line_color="black")
+
+        else:
+
+            print(self.source.data)
+
+            self.graph = self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source,
+                                     line_color="black")
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
 
@@ -233,6 +290,8 @@ class GraphPlot:
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
+        line_thick_slider = Slider(start=1, end=10, value=1, step=1, title="Line Width")
+        title_text = TextInput(placeholder="Figure Title")
 
         if self.group is not None:
 
@@ -243,9 +302,14 @@ class GraphPlot:
             self.graph = self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
         select_pal.on_change("value", self.change_palette)
+        line_thick_slider.on_change("value", self.change_line_thick)
+        title_text.on_change("value", self.change_figure_title)
+
 
         app_layout = layout([select_pal],
-                            [self.p])
+                            [title_text],
+                            [self.p],
+                            [line_thick_slider])
         return app_layout
 
 
@@ -259,7 +323,7 @@ df.sort("Year", inplace=True)
 # print(df)
 gp = GraphPlot(df["Year"], df["value"], palette="Accent", plot_width=600, plot_height=600, group=df["variable"])
 
-app_layout = gp.plot_line()
+app_layout = gp.plot_bar()
 
 doc = curdoc()
 doc.add_root(app_layout)
