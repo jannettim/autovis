@@ -1,7 +1,7 @@
 import seaborn
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput, Line
+from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput, Line, Legend
 from bokeh.client import push_session, ClientSession
 from bokeh.models.glyphs import VBar
 from matplotlib import pyplot
@@ -256,7 +256,6 @@ class GraphPlot:
 
                 if self.group.index(g) % 2 == 0:
 
-
                     self.source.data["x"][self.group.index(g)] = [x + .2*self.group.index(g) for x in self.source.data["x"][self.group.index(g)]]
 
                 else:
@@ -271,8 +270,6 @@ class GraphPlot:
                             line_color="black")
 
         else:
-
-            print(self.source.data)
 
             self.graph = self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source,
                                      line_color="black")
@@ -323,7 +320,7 @@ df.sort("Year", inplace=True)
 # print(df)
 gp = GraphPlot(df["Year"], df["value"], palette="Accent", plot_width=600, plot_height=600, group=df["variable"])
 
-app_layout = gp.plot_bar()
+app_layout = gp.plot_line()
 
 doc = curdoc()
 doc.add_root(app_layout)
