@@ -4,6 +4,7 @@ from bokeh.plotting import figure, curdoc
 from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput, Line, Legend
 from bokeh.client import push_session, ClientSession
 from bokeh.models.glyphs import VBar
+from bokeh.models.renderers import GlyphRenderer
 from matplotlib import pyplot
 from bokeh.layouts import layout, row
 from math import floor, ceil
@@ -29,97 +30,78 @@ class GraphPlot:
 
         if self.group is not None:
 
-            self.xs = x
-            self.ys = y
+            self.x = x
+            self.y = y
 
             self.num_colors = len(set(self.group))
 
             self.palettes = self.palette_maps(self.num_colors)
             self.palette = self.palettes[kwargs["palette"]]
-            temp_df = pd.DataFrame(list(zip(self.xs, self.ys, self.group)),
+            temp_df = pd.DataFrame(list(zip(self.x, self.y, self.group)),
                                    columns=["x", "y", "group"])
             temp_group = temp_df.groupby("group", as_index=False)
 
             self.num_mod = floor(len(self.group) / len(self.palette))
             self.colors = self.palette * self.num_mod
 
-            self.xs = temp_group["x"].apply(list).tolist()
-            self.ys = temp_group["y"].apply(list).tolist()
-            self.group = temp_group["group"].apply(list).tolist()
+            # self.xs = temp_group["x"].apply(list).tolist()
+            # self.ys = temp_group["y"].apply(list).tolist()
+            # self.group = temp_group["group"].apply(list).tolist()
 
-            self.source = ColumnDataSource(data=dict(x=temp_group["x"].apply(list).tolist(),
-                                                     y=temp_group["y"].apply(list).tolist(),
-                                                     color=self.palette,
-                                                     group=temp_group["group"].apply(list).tolist()))
+            self.source = {}
+
+            for g in temp_group.groups:
+
+                tg = temp_group.get_group(g)
+
+                self.source.update({g: ColumnDataSource(data=dict(x=tg["x"].tolist(), y=tg["y"].tolist(),
+                                                                  group=[g, ]*len(tg.x.index),
+                                                                  color=[self.palette[
+                                                                             list(temp_group.groups.keys()).index(g)],]
+                                                                        *len(tg.index)))})
+
+            # 1/0
+
+            # self.source = ColumnDataSource(data=dict(x=temp_group["x"].apply(list).tolist(),
+            #                                          y=temp_group["y"].apply(list).tolist(),
+            #                                          color=self.palette,
+            #                                          group=temp_group["group"].apply(list).tolist()))
 
         else:
 
-            if isinstance(y, pd.Series) and isinstance(x, pd.DataFrame):
+            if y.size != x.size:
 
-                self.series = False
+                if y.size % x.size == 0 or x.size % y.size == 0:
 
-                # if not self.group:
-                self.num_colors = len(x.columns)
-                # else:
-                #     self.num_colors = len(self.group)
+                    if x.size > y.size:
 
-                self.palettes = self.palette_maps(self.num_colors)
-                self.palette = self.palettes[kwargs["palette"]]
+                        self.x = x.values.flatten()
+                        self.y = y.repeat(x.size/y.size).values
 
-                self.ys = y.repeat(self.num_colors).values
-                self.xs = x.values.flatten()
-                self.num_mod = floor(len(self.xs) / len(self.palette))
-                self.colors = self.palette * self.num_mod
+                    elif y.size > x.size:
 
-            elif isinstance(y, pd.DataFrame) and isinstance(x, pd.DataFrame):
+                        self.y = y.values.flatten()
+                        self.x = x.repeat(y.size / x.size).values
 
-                self.series = False
-                self.num_colors = len(x.columns)
-                self.palettes = self.palette_maps(self.num_colors)
-                self.palette = self.palettes[kwargs["palette"]]
+                    self.palettes = self.palette_maps(1)
+                    self.palette = self.palettes[kwargs["palette"]]
+                    self.colors = self.palette * len(self.y)
 
-                if self.num_colors != len(y.columns):
+                    self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
 
-                    raise ValueError("If y values are dataframe, number of y columns needs to equal number of x columns. "
-                                     "If y is the same value repeated for each x then pass y as a series")
+                else:
 
-                self.ys = y.values.flatten()
-                self.xs = x.values.flatten()
-                self.num_mod = floor(len(self.xs) / len(self.palette))
-                self.colors = self.palette * self.num_mod
-
-            elif isinstance(y, pd.DataFrame) and isinstance(x, pd.Series):
-
-                self.series = False
-                self.num_colors = len(y.columns)
-                self.palettes = self.palette_maps(self.num_colors)
-                self.palette = self.palettes[kwargs["palette"]]
-
-                self.xs = x.repeat(self.num_colors).values
-                self.ys = y.values.flatten()
-
-                self.num_mod = floor(len(self.ys) / len(self.palette))
-                self.colors = self.palette * self.num_mod
-
-            elif isinstance(y, pd.Series) and isinstance(x, pd.Series):
-
-                self.series = True
-                self.palettes = self.palette_maps(1)
-                self.palette = self.palettes[kwargs["palette"]]
-                self.num_colors = 1
-
-                self.xs = x.tolist()
-                self.ys = y.tolist()
-                self.num_mod = len(self.palette) * len(self.ys)
-                self.colors = self.palette * self.num_mod
-                print(self.colors)
-
+                    raise AttributeError("data provided in columns x and y need to have the same dimensions or be"
+                                         " divisible.")
             else:
 
-                raise ValueError
+                self.x = x
+                self.y = y
+                self.palettes = self.palette_maps(1)
+                self.palette = self.palettes[kwargs["palette"]]
+                self.colors = self.palette * len(self.y)
 
-            self.source = ColumnDataSource(data=dict(x=self.xs, y=self.ys, color=self.colors))
-            self.col_source = ColumnDataSource(data=self.palettes)
+                self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
 
         self.graph = None
         self.p = None
@@ -146,9 +128,13 @@ class GraphPlot:
 
             if self.group is not None:
 
+                renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+                for r in renderer:
+                    ds = r.data_source
 
-                self.colors = self.palette
-                curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors, g=self.group))
+                    self.colors = [self.palette[renderer.index(r)],] * len(ds.data["color"])
+                    curdoc().add_next_tick_callback(partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
+                                                            g=ds.data["group"], source=ds))
 
             else:
 
@@ -163,9 +149,14 @@ class GraphPlot:
 
                 if self.group is not None:
 
-                    self.colors = self.palette
-                    curdoc().add_next_tick_callback(
-                        partial(self.update, x=self.xs, y=self.ys, c=self.colors, g=self.group))
+                    renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+                    for r in renderer:
+                        ds = r.data_source
+
+                        self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+                        curdoc().add_next_tick_callback(
+                            partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
+                                    g=ds.data["group"], source=ds))
 
                 else:
 
@@ -178,12 +169,18 @@ class GraphPlot:
 
                 if self.group is not None:
 
-                    self.colors = self.palette * len(self.group)
-                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+                    renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+                    for r in renderer:
+                        ds = r.data_source
+
+                        self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+                        curdoc().add_next_tick_callback(
+                            partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
+                                    g=ds.data["group"], source=ds))
 
                 else:
 
-                    self.colors = self.palette * self.num_mod
+                    self.colors = self.palette * len(self.source.data["colors"])#* self.num_mod
 
                     curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
 
@@ -210,27 +207,57 @@ class GraphPlot:
         self.p.title.text = new
         self.update(self.source.data["x"], self.source.data["y"], self.source.data["color"])
 
-    def update(self, x, y, c, g=None):
+    def update(self, x, y, c, g=None, source=None):
 
         # if not self.series:
-        self.source.data["color"] = []
-        self.source.data["x"] = []
-        self.source.data["y"] = []
 
-        if self.group is not None:
+        if source:
 
-            self.source.data["group"] = []
-            self.source.stream(dict(x=x, y=y, color=c, group=g))
+            source.data["color"] = []
+            source.data["x"] = []
+            source.data["y"] = []
 
         else:
 
-            self.source.stream(dict(x=x, y=y, color=c))
+            self.source.data["color"] = []
+            self.source.data["x"] = []
+            self.source.data["y"] = []
+
+        if self.group is not None:
+
+            if source:
+
+                source.data["group"] = []
+                source.stream(dict(x=x, y=y, color=c, group=g))
+
+            else:
+
+                self.source.data["group"] = []
+                self.source.stream(dict(x=x, y=y, color=c, group=g))
+
+        else:
+
+            if source:
+
+                source.stream(dict(x=x, y=y, color=c))
+
+            else:
+
+                self.source.stream(dict(x=x, y=y, color=c))
 
     def plot_scatter(self):
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
 
-        self.graph = self.p.scatter('x', 'y', color="color", source=self.source)
+        if self.group is not None:
+
+            for k in self.source.keys():
+
+                self.p.scatter("x", "y", color="color", source=self.source[k])
+
+        else:
+
+            self.graph = self.p.scatter('x', 'y', color="color", source=self.source)
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
@@ -250,23 +277,20 @@ class GraphPlot:
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
 
+
         if self.group is not None:
 
-            for g in self.source.data["group"]:
+            for g in self.source.keys():
 
-                if self.group.index(g) % 2 == 0:
+                if list(self.source.keys()).index(g) % 2 == 0:
 
-                    self.source.data["x"][self.group.index(g)] = [x + .2*self.group.index(g) for x in self.source.data["x"][self.group.index(g)]]
+                    self.source[g].data["x"] = [x + .2*list(self.source.keys()).index(g) for x in self.source[g].data["x"]]
 
                 else:
-                    self.source.data["x"][self.group.index(g)] = [x - .2*self.group.index(g) for x in self.source.data["x"][self.group.index(g)]]
+                    self.source[g].data["x"] = [x - .2 * list(self.source.keys()).index(g) for x in
+                                                self.source[g].data["x"]]
 
-                temp_source = ColumnDataSource(data=dict(x=self.source.data["x"][self.group.index(g)],
-                                                         y=self.source.data["y"][self.group.index(g)],
-                                                         color=[self.source.data["color"][self.group.index(g)],]*
-                                                               len(self.source.data["x"][self.group.index(g)])))
-
-                self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=temp_source,
+                self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source[g],
                             line_color="black")
 
         else:
@@ -292,7 +316,10 @@ class GraphPlot:
 
         if self.group is not None:
 
-            self.graph = self.p.multi_line("x", "y", color="color", source=self.source)
+            for k in self.source.keys():
+
+                self.p.line("x", "y", color=self.source[k].data["color"][0], source=self.source[k])
+                # self.p.add_glyph(self.source[k], Line(x="x", y="y", line_color="color"))
 
         else:
 
@@ -315,7 +342,7 @@ class GraphPlot:
 df = pd.read_excel("D:\\Documents\\MOPA\\Assignment1Data.xlsx", "Table I", skiprows=2)
 df.rename(columns={"Unnamed: 0": "Year"}, inplace=True)
 df = pd.melt(df, id_vars="Year")
-df.sort("Year", inplace=True)
+df.sort_values(by="Year", inplace=True)
 # df = df.loc[df.variable == "55-59 Years"]
 # print(df)
 gp = GraphPlot(df["Year"], df["value"], palette="Accent", plot_width=600, plot_height=600, group=df["variable"])
