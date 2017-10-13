@@ -44,10 +44,6 @@ class GraphPlot:
             self.num_mod = floor(len(self.group) / len(self.palette))
             self.colors = self.palette * self.num_mod
 
-            # self.xs = temp_group["x"].apply(list).tolist()
-            # self.ys = temp_group["y"].apply(list).tolist()
-            # self.group = temp_group["group"].apply(list).tolist()
-
             self.source = {}
 
             for g in temp_group.groups:
@@ -59,14 +55,6 @@ class GraphPlot:
                                                                   color=[self.palette[
                                                                              list(temp_group.groups.keys()).index(g)],]
                                                                         *len(tg.index)))})
-
-            # 1/0
-
-            # self.source = ColumnDataSource(data=dict(x=temp_group["x"].apply(list).tolist(),
-            #                                          y=temp_group["y"].apply(list).tolist(),
-            #                                          color=self.palette,
-            #                                          group=temp_group["group"].apply(list).tolist()))
-
         else:
 
             if y.size != x.size:
@@ -120,92 +108,62 @@ class GraphPlot:
 
         return palette_map
 
-    def change_palette(self, attr, old, new):
+    def change_palette_lines(self, attr, old, new):
 
         self.palette = self.palettes[new]
 
-        try:
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
-            if self.group is not None:
+        for r in renderer:
+            ds = r.data_source
 
-                renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
-                for r in renderer:
-                    ds = r.data_source
+            self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+            r.glyph.line_color = self.colors[0]
+            # curdoc().add_next_tick_callback(partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
+            #                                         g=ds.data["group"], source=ds))
 
-                    self.colors = [self.palette[renderer.index(r)],] * len(ds.data["color"])
-                    curdoc().add_next_tick_callback(partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
-                                                            g=ds.data["group"], source=ds))
+    def change_palette_scatter(self, attr, old, new):
+        self.palette = self.palettes[new]
 
-            else:
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
-                self.graph.glyph.fill_color = self.palette[0]
-                self.colors = self.palette[0] * len(self.source.data["colors"])
-                curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+        for r in renderer:
+            ds = r.data_source
 
+            self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+            r.glyph.fill_color = self.colors[0]
+            r.glyph.line_color = self.colors[0]
 
-        except AttributeError:
+    def change_palette_bar(self, attr, old, new):
 
-            try:
+        self.palette = self.palettes[new]
 
-                if self.group is not None:
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
-                    renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
-                    for r in renderer:
-                        ds = r.data_source
+        for r in renderer:
+            ds = r.data_source
 
-                        self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
-                        curdoc().add_next_tick_callback(
-                            partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
-                                    g=ds.data["group"], source=ds))
-
-                else:
-
-                    self.graph.glyph.line_color = self.palette[0]
-                    self.colors = self.palette[0] * len(self.source.data["colors"])
-                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
-
-
-            except AttributeError:
-
-                if self.group is not None:
-
-                    renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
-                    for r in renderer:
-                        ds = r.data_source
-
-                        self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
-                        curdoc().add_next_tick_callback(
-                            partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
-                                    g=ds.data["group"], source=ds))
-
-                else:
-
-                    self.colors = self.palette * len(self.source.data["colors"])#* self.num_mod
-
-                    curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+            self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+            r.glyph.fill_color = self.colors[0]
 
     def change_dot_size(self, attr, old, new):
 
-        self.graph.glyph.size = new
-        curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+        for r in renderer:
+
+            r.glyph.size = new
 
     def change_line_thick(self, attr, old, new):
 
-        self.graph.glyph.line_width = new
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+        for r in renderer:
 
-        if self.group is not None:
-
-            curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.palette, g=self.group))
-
-        else:
-            curdoc().add_next_tick_callback(partial(self.update, x=self.xs, y=self.ys, c=self.colors))
+            r.glyph.line_width = new
 
 
     def change_figure_title(self, attr, old, new):
 
-        print(self.p.title)
         self.p.title.text = new
-        self.update(self.source.data["x"], self.source.data["y"], self.source.data["color"])
 
     def update(self, x, y, c, g=None, source=None):
 
@@ -264,7 +222,7 @@ class GraphPlot:
 
         dot_size_slider = Slider(start=1, end=100, value=1, step=1, title="Dot Size")
         dot_size_slider.on_change("value", self.change_dot_size)
-        select_pal.on_change("value", self.change_palette)
+        select_pal.on_change("value", self.change_palette_scatter)
         title_text.on_change("value", self.change_figure_title)
 
         app_layout = layout([[title_text],
@@ -295,12 +253,11 @@ class GraphPlot:
 
         else:
 
-            self.graph = self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source,
-                                     line_color="black")
+            self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source, line_color="black")
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
 
-        select_pal.on_change("value", self.change_palette)
+        select_pal.on_change("value", self.change_palette_bar)
 
         app_layout = layout([[select_pal],
                             [self.p]])
@@ -319,13 +276,12 @@ class GraphPlot:
             for k in self.source.keys():
 
                 self.p.line("x", "y", color=self.source[k].data["color"][0], source=self.source[k])
-                # self.p.add_glyph(self.source[k], Line(x="x", y="y", line_color="color"))
 
         else:
 
-            self.graph = self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
+            self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
-        select_pal.on_change("value", self.change_palette)
+        select_pal.on_change("value", self.change_palette_lines)
         line_thick_slider.on_change("value", self.change_line_thick)
         title_text.on_change("value", self.change_figure_title)
 
@@ -338,16 +294,3 @@ class GraphPlot:
 
 
 
-# df = pd.DataFrame(np.random.randn(10, 4), columns=["x1", "x2", "y1", "y2"])
-df = pd.read_excel("D:\\Documents\\MOPA\\Assignment1Data.xlsx", "Table I", skiprows=2)
-df.rename(columns={"Unnamed: 0": "Year"}, inplace=True)
-df = pd.melt(df, id_vars="Year")
-df.sort_values(by="Year", inplace=True)
-# df = df.loc[df.variable == "55-59 Years"]
-# print(df)
-gp = GraphPlot(df["Year"], df["value"], palette="Accent", plot_width=600, plot_height=600, group=df["variable"])
-
-app_layout = gp.plot_line()
-
-doc = curdoc()
-doc.add_root(app_layout)
