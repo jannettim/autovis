@@ -1,5 +1,6 @@
 import seaborn
 import numpy as np
+from collections import OrderedDict
 from bokeh.plotting import figure, curdoc
 from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput, Line, Legend
 from bokeh.client import push_session, ClientSession
@@ -20,13 +21,19 @@ class GraphPlot:
         self.plot_width = kwargs["plot_width"]
         self.plot_height = kwargs["plot_height"]
 
-        try:
+        self.x_axis_type = kwargs.get("x_axis_type", "linear")
+        self.plot_title = kwargs.get("plot_title", " ")
+        self.group = kwargs.get("group", None)
+        self.x_axis_label = kwargs.get("x_axis_label", None)
+        self.y_axis_label = kwargs.get("y_axis_label", None)
 
-            self.group = kwargs["group"]
-
-        except KeyError:
-
-            self.group = None
+        # try:
+        #
+        #     self.group = kwargs["group"]
+        #
+        # except KeyError:
+        #
+        #     self.group = None
 
         if self.group is not None:
 
@@ -44,7 +51,7 @@ class GraphPlot:
             self.num_mod = floor(len(self.group) / len(self.palette))
             self.colors = self.palette * self.num_mod
 
-            self.source = {}
+            self.source = OrderedDict()
 
             for g in temp_group.groups:
 
@@ -266,7 +273,9 @@ class GraphPlot:
 
     def plot_line(self):
 
-        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height, x_axis_type=self.x_axis_type,
+                        x_axis_label=self.x_axis_label, y_axis_label=self.y_axis_label, title=self.plot_title)
+
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         line_thick_slider = Slider(start=1, end=10, value=1, step=1, title="Line Width")
         title_text = TextInput(placeholder="Figure Title")
@@ -281,16 +290,19 @@ class GraphPlot:
 
             self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
+        legend = Legend(items=[*list(zip(list(self.source.keys()),
+                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
+                        location=(0, -30))
+        self.p.yaxis[0].formatter.use_scientific = False
+
         select_pal.on_change("value", self.change_palette_lines)
         line_thick_slider.on_change("value", self.change_line_thick)
         title_text.on_change("value", self.change_figure_title)
 
+        self.p.add_layout(legend, 'left')
 
         app_layout = layout([select_pal],
                             [title_text],
                             [self.p],
                             [line_thick_slider])
         return app_layout
-
-
-
