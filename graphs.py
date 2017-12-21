@@ -1,39 +1,26 @@
 import seaborn
-import numpy as np
 from collections import OrderedDict
 from bokeh.plotting import figure, curdoc
-from bokeh.models import CustomJS, Slider, ColumnDataSource, Palette, Select, ColorMapper, TextInput, Line, Legend
-from bokeh.client import push_session, ClientSession
-from bokeh.models.glyphs import VBar
+from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend
 from bokeh.models.renderers import GlyphRenderer
 from matplotlib import pyplot
-from bokeh.layouts import layout, row
+from bokeh.layouts import layout
 from math import floor, ceil
-
-from functools import partial
 import pandas as pd
+from sklearn import datasets
 
 
 class GraphPlot:
 
     def __init__(self, x, y, **kwargs):
 
-        self.plot_width = kwargs["plot_width"]
-        self.plot_height = kwargs["plot_height"]
-
         self.x_axis_type = kwargs.get("x_axis_type", "linear")
         self.plot_title = kwargs.get("plot_title", " ")
         self.group = kwargs.get("group", None)
         self.x_axis_label = kwargs.get("x_axis_label", None)
         self.y_axis_label = kwargs.get("y_axis_label", None)
-
-        # try:
-        #
-        #     self.group = kwargs["group"]
-        #
-        # except KeyError:
-        #
-        #     self.group = None
+        self.plot_width = kwargs.get("plot_width", 600)
+        self.plot_height = kwargs.get("plot_height", 600)
 
         if self.group is not None:
 
@@ -43,7 +30,7 @@ class GraphPlot:
             self.num_colors = len(set(self.group))
 
             self.palettes = self.palette_maps(self.num_colors)
-            self.palette = self.palettes[kwargs["palette"]]
+            self.palette = self.palettes[kwargs.get("palette", "Accent")]
             temp_df = pd.DataFrame(list(zip(self.x, self.y, self.group)),
                                    columns=["x", "y", "group"])
             temp_group = temp_df.groupby("group", as_index=False)
@@ -57,7 +44,7 @@ class GraphPlot:
 
                 tg = temp_group.get_group(g)
 
-                self.source.update({g: ColumnDataSource(data=dict(x=tg["x"].tolist(), y=tg["y"].tolist(),
+                self.source.update({str(g): ColumnDataSource(data=dict(x=tg["x"].tolist(), y=tg["y"].tolist(),
                                                                   group=[g, ]*len(tg.x.index),
                                                                   color=[self.palette[
                                                                              list(temp_group.groups.keys()).index(g)],]
@@ -79,7 +66,7 @@ class GraphPlot:
                         self.x = x.repeat(y.size / x.size).values
 
                     self.palettes = self.palette_maps(1)
-                    self.palette = self.palettes[kwargs["palette"]]
+                    self.palette = self.palettes[kwargs.get("palette", "Accent")]
                     self.colors = self.palette * len(self.y)
 
                     self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
@@ -93,7 +80,7 @@ class GraphPlot:
                 self.x = x
                 self.y = y
                 self.palettes = self.palette_maps(1)
-                self.palette = self.palettes[kwargs["palette"]]
+                self.palette = self.palettes[kwargs.get("palette", "Accent")]
                 self.colors = self.palette * len(self.y)
 
                 self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
@@ -222,7 +209,7 @@ class GraphPlot:
 
         else:
 
-            self.graph = self.p.scatter('x', 'y', color="color", source=self.source)
+            self.p.scatter('x', 'y', color="color", source=self.source)
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
@@ -232,10 +219,12 @@ class GraphPlot:
         select_pal.on_change("value", self.change_palette_scatter)
         title_text.on_change("value", self.change_figure_title)
 
+
         app_layout = layout([[title_text],
                              [self.p],
                              [select_pal],
                              [dot_size_slider]])
+
         return app_layout
 
     def plot_bar(self):
@@ -290,6 +279,9 @@ class GraphPlot:
 
             self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
+        print(self.source.keys())
+        print(list(zip(list(self.source.keys()),
+                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)])))
         legend = Legend(items=[*list(zip(list(self.source.keys()),
                                          [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
                         location=(0, -30))
@@ -306,3 +298,13 @@ class GraphPlot:
                             [self.p],
                             [line_thick_slider])
         return app_layout
+
+iris = datasets.load_iris()
+
+df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
+df["Species"] = iris.target
+
+gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"])
+app_layout = gp.plot_scatter()
+
+curdoc().add_root(app_layout)
