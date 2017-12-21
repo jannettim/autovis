@@ -11,9 +11,18 @@ from sklearn import datasets
 
 
 class GraphPlot:
+    """
+    Basic plotting routine. Takes dataframe and turns it into plotable. Outputs plot
+    """
 
     def __init__(self, x, y, **kwargs):
+        """
+        :param x: x-axis points
+        :param y: y-axis points
+        :param kwargs: plotting attributes
+        """
 
+        # Get values or defaults for plotting attributes
         self.x_axis_type = kwargs.get("x_axis_type", "linear")
         self.plot_title = kwargs.get("plot_title", " ")
         self.group = kwargs.get("group", None)
@@ -27,8 +36,10 @@ class GraphPlot:
             self.x = x
             self.y = y
 
+            # Gets the number of groups
             self.num_colors = len(set(self.group))
 
+            # Get the colors for the groups and assign then
             self.palettes = self.palette_maps(self.num_colors)
             self.palette = self.palettes[kwargs.get("palette", "Accent")]
             temp_df = pd.DataFrame(list(zip(self.x, self.y, self.group)),
@@ -51,8 +62,11 @@ class GraphPlot:
                                                                         *len(tg.index)))})
         else:
 
+            # if y or x is not equal, 1 will be repeated
+
             if y.size != x.size:
 
+                # repeats the smaller column/list/array
                 if y.size % x.size == 0 or x.size % y.size == 0:
 
                     if x.size > y.size:
@@ -90,6 +104,13 @@ class GraphPlot:
 
     def palette_maps(self, n_colors):
 
+        """
+        Creates the palettes from seaborn for a given number of groups
+
+        :param n_colors: number of colors to assign
+        :return: map of palette names to hex codes
+        """
+
         palette_map = {}
 
         for n in pyplot.colormaps():
@@ -104,19 +125,38 @@ class GraphPlot:
 
     def change_palette_lines(self, attr, old, new):
 
+        """
+        Changes the color palette for lines
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
+        # get new palette colors
         self.palette = self.palettes[new]
 
+        # get glyphs
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
+        # assign colors to renderers
         for r in renderer:
             ds = r.data_source
 
             self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
             r.glyph.line_color = self.colors[0]
-            # curdoc().add_next_tick_callback(partial(self.update, x=ds.data["x"], y=ds.data["y"], c=self.colors,
-            #                                         g=ds.data["group"], source=ds))
 
     def change_palette_scatter(self, attr, old, new):
+        """
+        Change palette for scatter plots
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
         self.palette = self.palettes[new]
 
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
@@ -142,27 +182,76 @@ class GraphPlot:
 
     def change_dot_size(self, attr, old, new):
 
+        """
+        Changes the size of the dots in scatter plots
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
         for r in renderer:
 
             r.glyph.size = new
 
     def change_line_thick(self, attr, old, new):
+        """
+        Changes the thickness of the lines in line graphs
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
 
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
         for r in renderer:
 
             r.glyph.line_width = new
 
-
     def change_figure_title(self, attr, old, new):
+
+        """
+        Change the figure title
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
 
         self.p.title.text = new
 
+    def change_glyph_alpha(self, attr, old, new):
+        """
+        Change the transparency of glyphs
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+        for r in renderer:
+
+            r.glyph.fill_alpha = new
+
     def update(self, x, y, c, g=None, source=None):
+        """
+        Update new values on plot
 
-        # if not self.series:
+        :param x: x values
+        :param y: y values
+        :param c: colors
+        :param g: groups
+        :param source: data source
+        :return: None
+        """
 
+        # remove existing data
         if source:
 
             source.data["color"] = []
@@ -180,6 +269,7 @@ class GraphPlot:
             if source:
 
                 source.data["group"] = []
+                # reassign
                 source.stream(dict(x=x, y=y, color=c, group=g))
 
             else:
@@ -198,11 +288,19 @@ class GraphPlot:
                 self.source.stream(dict(x=x, y=y, color=c))
 
     def plot_scatter(self):
+        """
+        Plot scatter plots
 
+        :return: None
+        """
+
+        # set figure
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
 
+        # handle groups
         if self.group is not None:
 
+            # plot each line
             for k in self.source.keys():
 
                 self.p.scatter("x", "y", color="color", source=self.source[k])
@@ -211,26 +309,40 @@ class GraphPlot:
 
             self.p.scatter('x', 'y', color="color", source=self.source)
 
+        legend = Legend(items=[*list(zip(list(self.source.keys()),
+                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
+                        location=(0, -30))
+
+        self.p.add_layout(legend, 'left')
+
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
 
         dot_size_slider = Slider(start=1, end=100, value=1, step=1, title="Dot Size")
+        alpha_slider = Slider(start=0, end=1, value=1, step=.01, title="Transparency")
+
         dot_size_slider.on_change("value", self.change_dot_size)
         select_pal.on_change("value", self.change_palette_scatter)
         title_text.on_change("value", self.change_figure_title)
+        alpha_slider.on_change("value", self.change_glyph_alpha)
 
 
         app_layout = layout([[title_text],
                              [self.p],
                              [select_pal],
-                             [dot_size_slider]])
+                             [dot_size_slider],
+                             [alpha_slider]])
 
         return app_layout
 
     def plot_bar(self):
+        """
+        Plot bar chart
+
+        :return:
+        """
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
-
 
         if self.group is not None:
 
@@ -261,6 +373,11 @@ class GraphPlot:
         return app_layout
 
     def plot_line(self):
+        """
+        Plot line graph
+
+        :return:
+        """
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height, x_axis_type=self.x_axis_type,
                         x_axis_label=self.x_axis_label, y_axis_label=self.y_axis_label, title=self.plot_title)
@@ -279,9 +396,6 @@ class GraphPlot:
 
             self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
-        print(self.source.keys())
-        print(list(zip(list(self.source.keys()),
-                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)])))
         legend = Legend(items=[*list(zip(list(self.source.keys()),
                                          [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
                         location=(0, -30))
@@ -304,7 +418,7 @@ iris = datasets.load_iris()
 df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
 df["Species"] = iris.target
 
-gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"])
+gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"], plot_height=600, plot_width=1000)
 app_layout = gp.plot_scatter()
 
 curdoc().add_root(app_layout)
