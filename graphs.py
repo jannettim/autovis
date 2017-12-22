@@ -284,7 +284,10 @@ class GraphPlot:
 
             else:
 
-                pass
+                reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source.data["x"],
+                                                                           self.source.data["y"])
+                temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source.data["color"]))
+                self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
 
         else:
 
@@ -362,15 +365,16 @@ class GraphPlot:
 
                 self.p.scatter("x", "y", color="color", source=self.source[k])
 
+            legend = Legend(items=[*list(zip(list(self.source.keys()),
+                                             [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
+                            location=(0, -30))
+
+            self.p.add_layout(legend, 'left')
+
         else:
 
             self.p.scatter('x', 'y', color="color", source=self.source)
 
-        legend = Legend(items=[*list(zip(list(self.source.keys()),
-                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
-                        location=(0, -30))
-
-        self.p.add_layout(legend, 'left')
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
@@ -452,20 +456,19 @@ class GraphPlot:
 
                 self.p.line("x", "y", color=self.source[k].data["color"][0], source=self.source[k])
 
+            legend = Legend(items=[*list(zip(list(self.source.keys()),
+                                             [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
+                            location=(0, -30))
+            self.p.yaxis[0].formatter.use_scientific = False
+            self.p.add_layout(legend, 'left')
+
         else:
 
             self.p.line("x", "y", color=self.source.data["color"][0], source=self.source)
 
-        legend = Legend(items=[*list(zip(list(self.source.keys()),
-                                         [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
-                        location=(0, -30))
-        self.p.yaxis[0].formatter.use_scientific = False
-
         select_pal.on_change("value", self.change_palette_lines)
         line_thick_slider.on_change("value", self.change_line_thick)
         title_text.on_change("value", self.change_figure_title)
-
-        self.p.add_layout(legend, 'left')
 
         app_layout = layout([select_pal],
                             [title_text],
@@ -479,6 +482,6 @@ df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Leng
 df["Species"] = iris.target
 
 gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"], plot_height=600, plot_width=1000)
-app_layout = gp.plot_scatter()
+app_layout = gp.plot_line()
 
 curdoc().add_root(app_layout)
