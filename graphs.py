@@ -167,9 +167,15 @@ class GraphPlot:
             ds = r.data_source
 
             try:
-                self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+                self.colors = [(self.palette*3)[renderer.index(r)], ] * len(ds.data["color"])
             except IndexError:
-                self.colors = [self.palette[int(renderer.index(r)-(len(renderer)/2))], ] * len(ds.data["color"])
+
+                if r.name == "reg":
+                    self.colors = [(self.palette*3)[int(renderer.index(r))], ] * len(ds.data["color"])
+
+                if r.name == "error":
+                    print(int(renderer.index(r)-6))
+                    self.colors = [(self.palette*3)[int(renderer.index(r))], ] * len(ds.data["color"])
 
             try:
                 r.glyph.fill_color = self.colors[0]
@@ -256,7 +262,12 @@ class GraphPlot:
         for r in renderer:
 
             try:
-                r.glyph.fill_alpha = new
+                if r.name == "error":
+
+                    r.glyph.fill_alpha = new*.2
+
+                else:
+                    r.glyph.fill_alpha = new
 
             except AttributeError:
                 pass
@@ -274,13 +285,14 @@ class GraphPlot:
                     temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source[k].data["color"]))
                     self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
 
-                    # test = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
-                    # band_x = [t[2] for t in test] + [t[2] for t in test][::-1]
-                    # bounds = [t[1] for t in test] + [t[0] for t in test][::-1]
-                    #
-                    # patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
-                    #
-                    # self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source)
+                    test = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+                    band_x = [t[2] for t in test] + [t[2] for t in test][::-1]
+                    bounds = [t[1] for t in test] + [t[0] for t in test][::-1]
+
+                    patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
+
+                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
+                                 name="error")
 
             else:
 
@@ -295,7 +307,7 @@ class GraphPlot:
 
             for r in renderer:
 
-                if r.name == "reg":
+                if r.name == "reg" or r.name == "error":
 
                     self.p.renderers.remove(r)
 
@@ -482,6 +494,6 @@ df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Leng
 df["Species"] = iris.target
 
 gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"], plot_height=600, plot_width=1000)
-app_layout = gp.plot_line()
+app_layout = gp.plot_scatter()
 
 curdoc().add_root(app_layout)
