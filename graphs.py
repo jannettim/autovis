@@ -275,6 +275,9 @@ class GraphPlot:
     def add_regression(self, attr, old, new):
 
         if new:
+
+            self.reg_err_check.disabled = False
+
             if self.group is not None:
 
                 for k in self.source.keys():
@@ -284,15 +287,6 @@ class GraphPlot:
 
                     temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source[k].data["color"]))
                     self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
-
-                    test = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
-                    band_x = [t[2] for t in test] + [t[2] for t in test][::-1]
-                    bounds = [t[1] for t in test] + [t[0] for t in test][::-1]
-
-                    patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
-
-                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
-                                 name="error")
 
             else:
 
@@ -308,6 +302,53 @@ class GraphPlot:
             for r in renderer:
 
                 if r.name == "reg" or r.name == "error":
+
+                    self.p.renderers.remove(r)
+
+            self.reg_err_check.active = [1]
+            self.reg_err_check.disabled = True
+
+    def add_reg_error(self, attr, old, new):
+
+        if new == [0]:
+
+            if self.group is not None:
+
+                for k in self.source.keys():
+
+                    reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source[k].data["x"],
+                                                                               self.source[k].data["y"])
+
+                    bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+                    band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
+                    bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
+
+                    patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
+
+                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
+                                 name="error")
+
+            else:
+
+                reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source.data["x"],
+                                                                           self.source.data["y"])
+
+                bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+                band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
+                bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
+
+                patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source.data["color"] * 2))
+
+                self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
+                             name="error")
+
+        else:
+
+            renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+            for r in renderer:
+
+                if r.name == "error":
 
                     self.p.renderers.remove(r)
 
@@ -394,6 +435,7 @@ class GraphPlot:
         dot_size_slider = Slider(start=1, end=100, value=1, step=1, title="Dot Size")
         alpha_slider = Slider(start=0, end=1, value=1, step=.01, title="Transparency")
         reg_check = CheckboxGroup(labels=["Regression Line"])
+        self.reg_err_check = CheckboxGroup(labels=["Error Region"], disabled=True)
 
         dot_size_slider.on_change("value", self.change_dot_size)
         select_pal.on_change("value", self.change_palette_scatter)
@@ -401,13 +443,14 @@ class GraphPlot:
         alpha_slider.on_change("value", self.change_glyph_alpha)
 
         reg_check.on_change("active", self.add_regression)
+        self.reg_err_check.on_change("active", self.add_reg_error)
 
         app_layout = layout([[title_text],
                              [self.p],
                              [select_pal],
                              [dot_size_slider],
                              [alpha_slider],
-                             reg_check])
+                             [reg_check, self.reg_err_check]])
 
         return app_layout
 
@@ -493,7 +536,7 @@ iris = datasets.load_iris()
 df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
 df["Species"] = iris.target
 
-gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"], plot_height=600, plot_width=1000)
+gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"],  group=df["Species"], plot_height=600, plot_width=1000)
 app_layout = gp.plot_scatter()
 
 curdoc().add_root(app_layout)
