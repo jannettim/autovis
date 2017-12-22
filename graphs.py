@@ -408,7 +408,8 @@ class GraphPlot:
         """
 
         # set figure
-        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height,
+                        x_axis_label=self.x_axis_label, y_axis_label=self.y_axis_label)
 
         # handle groups
         if self.group is not None:
@@ -461,7 +462,8 @@ class GraphPlot:
         :return:
         """
 
-        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height)
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height, x_axis_label=self.x_axis_label,
+                        y_axis_label=self.y_axis_label)
 
         if self.group is not None:
 
@@ -536,7 +538,8 @@ iris = datasets.load_iris()
 df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
 df["Species"] = iris.target
 
-gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"],  group=df["Species"], plot_height=600, plot_width=1000)
-app_layout = gp.plot_scatter()
+gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"],  group=df["Species"], plot_height=600, plot_width=1000,
+               x_axis_label="Sepal Length", y_axis_label="Sepal Width")
 
+app_layout = gp.plot_scatter()
 curdoc().add_root(app_layout)
