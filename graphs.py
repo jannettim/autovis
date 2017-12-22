@@ -1,13 +1,14 @@
 import seaborn
 from collections import OrderedDict
 from bokeh.plotting import figure, curdoc
-from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend
+from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend, CheckboxGroup
 from bokeh.models.renderers import GlyphRenderer
 from matplotlib import pyplot
 from bokeh.layouts import layout
 from math import floor, ceil
 import pandas as pd
 from sklearn import datasets
+from stats import get_regression_line
 
 
 class GraphPlot:
@@ -162,11 +163,23 @@ class GraphPlot:
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
         for r in renderer:
+
             ds = r.data_source
 
-            self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
-            r.glyph.fill_color = self.colors[0]
+            try:
+                self.colors = [self.palette[renderer.index(r)], ] * len(ds.data["color"])
+            except IndexError:
+                self.colors = [self.palette[int(renderer.index(r)-(len(renderer)/2))], ] * len(ds.data["color"])
+
+            try:
+                r.glyph.fill_color = self.colors[0]
+
+            except AttributeError:
+
+                pass
             r.glyph.line_color = self.colors[0]
+
+            ds.data["color"] = self.colors
 
     def change_palette_bar(self, attr, old, new):
 
@@ -194,7 +207,12 @@ class GraphPlot:
         renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
         for r in renderer:
 
-            r.glyph.size = new
+            try:
+                r.glyph.size = new
+
+            except AttributeError:
+
+                pass
 
     def change_line_thick(self, attr, old, new):
         """
@@ -237,7 +255,46 @@ class GraphPlot:
 
         for r in renderer:
 
-            r.glyph.fill_alpha = new
+            try:
+                r.glyph.fill_alpha = new
+
+            except AttributeError:
+                pass
+
+    def add_regression(self, attr, old, new):
+
+        if new:
+            if self.group is not None:
+
+                for k in self.source.keys():
+
+                    reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source[k].data["x"],
+                                                                               self.source[k].data["y"])
+
+                    temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source[k].data["color"]))
+                    self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
+
+                    # test = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+                    # band_x = [t[2] for t in test] + [t[2] for t in test][::-1]
+                    # bounds = [t[1] for t in test] + [t[0] for t in test][::-1]
+                    #
+                    # patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
+                    #
+                    # self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source)
+
+            else:
+
+                pass
+
+        else:
+
+            renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+            for r in renderer:
+
+                if r.name == "reg":
+
+                    self.p.renderers.remove(r)
 
     def update(self, x, y, c, g=None, source=None):
         """
@@ -320,18 +377,21 @@ class GraphPlot:
 
         dot_size_slider = Slider(start=1, end=100, value=1, step=1, title="Dot Size")
         alpha_slider = Slider(start=0, end=1, value=1, step=.01, title="Transparency")
+        reg_check = CheckboxGroup(labels=["Regression Line"])
 
         dot_size_slider.on_change("value", self.change_dot_size)
         select_pal.on_change("value", self.change_palette_scatter)
         title_text.on_change("value", self.change_figure_title)
         alpha_slider.on_change("value", self.change_glyph_alpha)
 
+        reg_check.on_change("active", self.add_regression)
 
         app_layout = layout([[title_text],
                              [self.p],
                              [select_pal],
                              [dot_size_slider],
-                             [alpha_slider]])
+                             [alpha_slider],
+                             reg_check])
 
         return app_layout
 
