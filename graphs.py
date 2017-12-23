@@ -1,14 +1,17 @@
 import seaborn
 from collections import OrderedDict
 from bokeh.plotting import figure, curdoc
-from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend, CheckboxGroup
+from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend, CheckboxGroup, Button
 from bokeh.models.renderers import GlyphRenderer
 from matplotlib import pyplot
-from bokeh.layouts import layout
+from bokeh.layouts import layout, row
 from math import floor, ceil
 import pandas as pd
 from sklearn import datasets
 from stats import get_regression_line
+
+from file_input import ImportData
+from functools import partial
 
 
 class GraphPlot:
@@ -31,6 +34,8 @@ class GraphPlot:
         self.y_axis_label = kwargs.get("y_axis_label", None)
         self.plot_width = kwargs.get("plot_width", 600)
         self.plot_height = kwargs.get("plot_height", 600)
+
+        self.file_source = ColumnDataSource({'file_contents': [], 'file_name': []})
 
         if self.group is not None:
 
@@ -533,13 +538,38 @@ class GraphPlot:
                             [line_thick_slider])
         return app_layout
 
-iris = datasets.load_iris()
 
-df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
-df["Species"] = iris.target
+# iris = datasets.load_iris()
+#
+# df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
+# df["Species"] = iris.target
+#
+# df.to_csv("iris.csv", index=False)
 
-gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"],  group=df["Species"], plot_height=600, plot_width=1000,
-               x_axis_label="Sepal Length", y_axis_label="Sepal Width")
+doc = curdoc()
 
-app_layout = gp.plot_scatter()
-curdoc().add_root(app_layout)
+def test_callback(data):
+
+    df = data.df
+
+    doc.remove_root(doc.select_one({"name": "test"}))
+
+    gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"],
+                   plot_height=600, plot_width=1000,
+                   x_axis_label="Sepal Length", y_axis_label="Sepal Width")
+    app_layout = gp.plot_scatter()
+
+    print(df)
+
+    doc.add_root(app_layout)
+
+button = Button(label="Upload", button_type="success")
+button2 = Button(label="Submit", button_type="success")
+
+impdata = ImportData()
+button.callback = impdata.cb
+
+impdata.file_source.on_change("data", impdata.file_callback)
+button2.on_click(partial(test_callback, data=impdata))
+
+doc.add_root(row(button, button2, name="test"))
