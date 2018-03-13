@@ -107,6 +107,7 @@ class GraphPlot:
 
         self.graph = None
         self.p = None
+        self.hist_source = None
 
     def palette_maps(self, n_colors):
 
@@ -191,6 +192,66 @@ class GraphPlot:
             r.glyph.line_color = self.colors[0]
 
             ds.data["color"] = self.colors
+
+    def change_palette_hist(self, attr, old, new):
+        """
+        Change palette for histograms
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
+        self.palette = self.palettes[new]
+
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+        for r in renderer:
+
+            ds = r.data_source
+            self.colors = [(self.palette*3)[renderer.index(r)], ] * len(ds.data["color"])
+
+            ds.data["color"] = self.colors
+
+    def change_hist_line(self, attr, old, new):
+
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+        for r in renderer:
+
+            ds = r.data_source
+
+            if new == [0]:
+
+                r.glyph.line_color = "black"
+
+            else:
+                r.glyph.line_color = ds.data["color"][0]
+
+    def change_bins(self, attr, old, new):
+
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
+        if self.group is not None:
+
+            for r in renderer:
+
+                self.p.renderers.remove(r)
+
+            for k in self.source.keys():
+
+                cuts = pd.Series(pd.cut(self.source[k].data["x"], new)).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
+                cuts["y"] = self.source[k].data["y"]
+
+                cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
+
+                self.hist_source= ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
+                                                             freq=cuts["freq"].tolist(),
+                                                             color=[self.source[k].data["color"][0], ] * len(cuts.index)))
+
+                self.p.quad(left="min", right="max", bottom=0, top="freq", source=self.hist_source, line_color="black",
+                            color="color")
 
     def change_palette_bar(self, attr, old, new):
 
@@ -330,7 +391,7 @@ class GraphPlot:
 
                     patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
 
-                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
+                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.2, source=patch_source,
                                  name="error")
 
             else:
@@ -538,38 +599,69 @@ class GraphPlot:
                             [line_thick_slider])
         return app_layout
 
+    def plot_histogram(self, bins):
 
-# iris = datasets.load_iris()
-#
-# df = pd.DataFrame(iris.data, columns=["Sepal_Length", "Sepal_Width", "Petal_Length", "Petal_Width"])
-# df["Species"] = iris.target
-#
-# df.to_csv("iris.csv", index=False)
+        self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height, x_axis_type=self.x_axis_type,
+                        x_axis_label=self.x_axis_label, y_axis_label=self.y_axis_label, title=self.plot_title)
+
+        if self.group is not None:
+
+            for k in self.source.keys():
+
+                cuts = pd.Series(pd.cut(self.source[k].data["x"], bins)).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
+                cuts["y"] = self.source[k].data["y"]
+
+                cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
+
+                self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
+                                                         freq=cuts["freq"].tolist(),
+                                                         color=[self.source[k].data["color"][0], ] * len(cuts.index)))
+
+                self.p.quad(left="min", right="max", bottom=0, top="freq", source=self.hist_source, line_color="black",
+                            color="color")
+
+        else:
+
+            cuts = pd.cut(self.source.data["x"], bins).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
+            cuts["y"] = self.source.data["y"]
+
+            cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
+
+            self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
+                                                     freq=cuts["freq"].tolist(),
+                                                     color=[self.source.data["color"][0], ] * len(cuts.index)))
+
+            self.p.quad(left="min", right="max", bottom=0, top="freq", source=self.hist_source, line_color="black",
+                        color="color")
+
+        select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
+        alpha_slider = Slider(start=0, end=1, value=1, step=.01, title="Transparency")
+        title_text = TextInput(placeholder="Figure Title")
+        bins_slider = Slider(start=1, end=99, value=bins, step=1, title="Bins")
+        line_check = CheckboxGroup(labels=["Outline"], active=[0])
+
+        select_pal.on_change("value", self.change_palette_hist)
+        alpha_slider.on_change("value", self.change_glyph_alpha)
+        title_text.on_change("value", self.change_figure_title)
+        line_check.on_change("active", self.change_hist_line)
+        bins_slider.on_change("value", self.change_bins)
+
+        app_layout = layout([title_text],
+                            [select_pal],
+                            [self.p],
+                            [alpha_slider],
+                            [bins_slider],
+                            [line_check])
+
+        return app_layout
+
+
+df = pd.read_csv("iris.csv")
+
+gp = GraphPlot(df["Sepal_Length"], df["Sepal_Width"], group=df["Species"])#, group=df["Tests Failed"])#, x_axis_type="datetime")
+
+app_layout = gp.plot_histogram(7)
 
 doc = curdoc()
 
-def test_callback(data):
-
-    df = data.df
-
-    doc.remove_root(doc.select_one({"name": "test"}))
-
-    gp = GraphPlot(x=df["Sepal_Length"], y=df["Sepal_Width"], group=df["Species"],
-                   plot_height=600, plot_width=1000,
-                   x_axis_label="Sepal Length", y_axis_label="Sepal Width")
-    app_layout = gp.plot_scatter()
-
-    print(df)
-
-    doc.add_root(app_layout)
-
-button = Button(label="Upload", button_type="success")
-button2 = Button(label="Submit", button_type="success")
-
-impdata = ImportData()
-button.callback = impdata.cb
-
-impdata.file_source.on_change("data", impdata.file_callback)
-button2.on_click(partial(test_callback, data=impdata))
-
-doc.add_root(row(button, button2, name="test"))
+doc.add_root(app_layout)
