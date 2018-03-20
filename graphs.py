@@ -10,8 +10,8 @@ import pandas as pd
 from sklearn import datasets
 from stats import get_regression_line
 
-from file_input import ImportData
-from functools import partial
+# from file_input import ImportData
+# from functools import partial
 
 
 class GraphPlot:

@@ -1,17 +1,24 @@
-from bokeh.models import ColumnDataSource, CustomJS, Button, DataTable, TableColumn, Dropdown
+from bokeh.models import ColumnDataSource, CustomJS, Button, DataTable, TableColumn, Dropdown, PreText, RadioButtonGroup
 from bokeh.layouts import layout
 from bokeh.plotting import curdoc
 
 from file_input import ImportData
 
 imp_data = ImportData()
-button = Button(label="Upload")
+button = Button(label="Upload", button_type="success")
 button.js_on_click(imp_data.cb)
 
-imp_data.x_drop = Dropdown(label="x column")
-imp_data.y_drop = Dropdown(label="y column")
-imp_data.g_drop = Dropdown(label="group column")
+imp_data.x_label = PreText(text="x axis variable")
+imp_data.y_label = PreText(text="y axis variable")
+imp_data.g_label = PreText(text="group variable")
+
+imp_data.x_drop = RadioButtonGroup()
+imp_data.y_drop = RadioButtonGroup()
+imp_data.g_drop = RadioButtonGroup()
 imp_data.dt = DataTable()
+imp_data.plot_type = RadioButtonGroup(labels=["Line", "Bar", "Scatter", "Histogram"])
+imp_data.plot_label = PreText(text="Plot type")
+imp_data.submit = Button(label="Submit", button_type="success")
 
 app_layout = layout([button])
 doc = curdoc()
