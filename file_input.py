@@ -132,6 +132,22 @@ class ImportData:
 
             app_layout = gp.plot_scatter()
 
+        elif plot_type == "Line":
+
+            app_layout = gp.plot_line()
+
+        elif plot_type == "Bar":
+
+            app_layout = gp.plot_bar()
+
+        elif plot_type == "Histogram":
+
+            app_layout = gp.plot_histogram(7)
+
+        else:
+
+            app_layout = None
+
         self.doc.clear()
 
         self.doc.add_root(app_layout)
