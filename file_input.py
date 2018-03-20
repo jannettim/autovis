@@ -8,7 +8,8 @@ https://github.com/bokeh/bokeh/issues/6096
 """
 
 import pandas as pd
-from bokeh.models import ColumnDataSource, CustomJS
+from bokeh.models import ColumnDataSource, CustomJS, DataTable, TableColumn
+from bokeh.layouts import row
 
 import io
 import base64
@@ -18,9 +19,16 @@ class ImportData:
 
     def __init__(self):
 
-        self.file_source = ColumnDataSource({'file_contents':[], 'file_name':[]})
+        self.file_source = ColumnDataSource({'file_contents': [], 'file_name': []})
 
         self.df = None
+
+        self.layout = None
+        self.doc = None
+        self.x_drop = None
+        self.y_drop = None
+        self.g_drop = None
+        self.dt = None
 
         self.cb = CustomJS(args=dict(file_source=self.file_source), code="""
             function read_file(filename) {
@@ -55,6 +63,24 @@ class ImportData:
             input.click();
             """)
 
+        self.file_source.on_change('data', self.file_callback)
+
+    def load_preview(self):
+        source = ColumnDataSource(data=dict())
+        columns = []
+
+        for col in self.df.columns:
+            source.data.update({col: self.df.head(10)[col].tolist()})
+            columns.append(TableColumn(field=col, title=col))
+
+        self.dt.source = source
+        self.dt.columns = columns
+        self.x_drop.menu = list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
+        self.y_drop.menu = list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
+        self.g_drop.menu = list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
+        self.doc.add_root(row([self.dt]))
+        self.doc.add_root(row([self.x_drop, self.y_drop, self.g_drop]))
+
     def file_callback(self, attr, old, new):
 
         raw_contents = self.file_source.data['file_contents'][0]
@@ -65,3 +91,9 @@ class ImportData:
         file_io = io.StringIO(file_contents.decode("latin-1"))
 
         self.df = pd.read_csv(file_io)
+
+        self.load_preview()
+
+        # return self.cb
+
+

@@ -656,12 +656,12 @@ class GraphPlot:
         return app_layout
 
 
-df = pd.read_csv("iris.csv")
+# df = pd.read_csv("iris.csv")
+#
+# gp = GraphPlot(df["Sepal_Length"], df["Sepal_Width"], group=df["Species"])#, group=df["Tests Failed"])#, x_axis_type="datetime")
 
-gp = GraphPlot(df["Sepal_Length"], df["Sepal_Width"], group=df["Species"])#, group=df["Tests Failed"])#, x_axis_type="datetime")
+# app_layout = gp.plot_histogram(7)
 
-app_layout = gp.plot_histogram(7)
 
-doc = curdoc()
-
-doc.add_root(app_layout)
+# doc = curdoc()
+# doc.add_root(app_layout)
