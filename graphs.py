@@ -4,7 +4,7 @@ from bokeh.plotting import figure, curdoc
 from bokeh.models import Slider, ColumnDataSource, Select, TextInput, Legend, CheckboxGroup, Button
 from bokeh.models.renderers import GlyphRenderer
 from matplotlib import pyplot
-from bokeh.layouts import layout, row
+from bokeh.layouts import layout, row, Spacer
 from math import floor, ceil
 import pandas as pd
 from sklearn import datasets
@@ -313,6 +313,32 @@ class GraphPlot:
 
         self.p.title.text = new
 
+    def change_figure_yaxis(self, attr, old, new):
+
+        """
+        Change the figure title
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
+        self.p.yaxis.axis_label = new
+
+    def change_figure_xaxis(self, attr, old, new):
+
+        """
+        Change the figure title
+
+        :param attr: attribute changes
+        :param old: old value
+        :param new: new value
+        :return: None
+        """
+
+        self.p.xaxis.axis_label = new
+
     def change_glyph_alpha(self, attr, old, new):
         """
         Change the transparency of glyphs
@@ -477,6 +503,9 @@ class GraphPlot:
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height,
                         x_axis_label=self.x_axis_label, y_axis_label=self.y_axis_label)
 
+        y_axis_label = TextInput(placeholder="y-axis label")
+        x_axis_label = TextInput(placeholder="x-axis label")
+
         # handle groups
         if self.group is not None:
 
@@ -511,9 +540,12 @@ class GraphPlot:
 
         reg_check.on_change("active", self.add_regression)
         self.reg_err_check.on_change("active", self.add_reg_error)
+        y_axis_label.on_change("value", self.change_figure_yaxis)
+        x_axis_label.on_change("value", self.change_figure_xaxis)
 
         app_layout = layout([[title_text],
-                             [self.p],
+                             [y_axis_label, self.p],
+                             [Spacer(height=10, width=500), x_axis_label],
                              [select_pal],
                              [dot_size_slider],
                              [alpha_slider],
@@ -530,6 +562,9 @@ class GraphPlot:
 
         self.p = figure(plot_width=self.plot_width, plot_height=self.plot_height, x_axis_label=self.x_axis_label,
                         y_axis_label=self.y_axis_label)
+
+        y_axis_label = TextInput(placeholder="y-axis label")
+        x_axis_label = TextInput(placeholder="x-axis label")
 
         if self.group is not None:
 
@@ -551,11 +586,17 @@ class GraphPlot:
             self.p.vbar(x="x", top="y", width=.5, fill_color="color", source=self.source, line_color="black")
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
+        title_text = TextInput(placeholder="Figure Title")
 
         select_pal.on_change("value", self.change_palette_bar)
+        y_axis_label.on_change("value", self.change_figure_yaxis)
+        x_axis_label.on_change("value", self.change_figure_xaxis)
+        title_text.on_change("value", self.change_figure_title)
 
         app_layout = layout([[select_pal],
-                            [self.p]])
+                             [title_text],
+                             [y_axis_label, self.p],
+                             [Spacer(height=10, width=500), x_axis_label],])
 
         return app_layout
 
@@ -572,6 +613,8 @@ class GraphPlot:
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         line_thick_slider = Slider(start=1, end=10, value=1, step=1, title="Line Width")
         title_text = TextInput(placeholder="Figure Title")
+        y_axis_label = TextInput(placeholder="y-axis label")
+        x_axis_label = TextInput(placeholder="x-axis label")
 
         if self.group is not None:
 
@@ -592,10 +635,13 @@ class GraphPlot:
         select_pal.on_change("value", self.change_palette_lines)
         line_thick_slider.on_change("value", self.change_line_thick)
         title_text.on_change("value", self.change_figure_title)
+        y_axis_label.on_change("value", self.change_figure_yaxis)
+        x_axis_label.on_change("value", self.change_figure_xaxis)
 
         app_layout = layout([select_pal],
                             [title_text],
-                            [self.p],
+                            [y_axis_label, self.p],
+                            [Spacer(height=10, width=500), x_axis_label],
                             [line_thick_slider])
         return app_layout
 
@@ -639,16 +685,21 @@ class GraphPlot:
         title_text = TextInput(placeholder="Figure Title")
         bins_slider = Slider(start=1, end=99, value=bins, step=1, title="Bins")
         line_check = CheckboxGroup(labels=["Outline"], active=[0])
+        y_axis_label = TextInput(placeholder="y-axis label")
+        x_axis_label = TextInput(placeholder="x-axis label")
 
         select_pal.on_change("value", self.change_palette_hist)
         alpha_slider.on_change("value", self.change_glyph_alpha)
         title_text.on_change("value", self.change_figure_title)
+        y_axis_label.on_change("value", self.change_figure_yaxis)
+        x_axis_label.on_change("value", self.change_figure_xaxis)
         line_check.on_change("active", self.change_hist_line)
         bins_slider.on_change("value", self.change_bins)
 
         app_layout = layout([title_text],
                             [select_pal],
-                            [self.p],
+                            [y_axis_label, self.p],
+                            [Spacer(height=10, width=500), x_axis_label],
                             [alpha_slider],
                             [bins_slider],
                             [line_check])
