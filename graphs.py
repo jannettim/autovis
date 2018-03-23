@@ -172,26 +172,27 @@ class GraphPlot:
 
             ds = r.data_source
 
-            try:
-                self.colors = [(self.palette*3)[renderer.index(r)], ] * len(ds.data["color"])
-            except IndexError:
+            temp_palette = []
 
-                if r.name == "reg":
-                    self.colors = [(self.palette*3)[int(renderer.index(r))], ] * len(ds.data["color"])
+            for p in self.palette:
+
+                temp_palette.extend([p, ] * 3)
+
+            try:
+                self.colors = [temp_palette[renderer.index(r)], ] * len(ds.data["color"])
+
+            except KeyError:
+
+                if r.name == "reg_line":
+
+                    r.glyph.line_color = [temp_palette[renderer.index(r)], ][0]
 
                 if r.name == "error":
-                    print(int(renderer.index(r)-6))
-                    self.colors = [(self.palette*3)[int(renderer.index(r))], ] * len(ds.data["color"])
+                    r.glyph.fill_color = [temp_palette[renderer.index(r)], ][0]
+                    r.glyph.line_color = [temp_palette[renderer.index(r)], ][0]
 
-            try:
-                r.glyph.fill_color = self.colors[0]
-
-            except AttributeError:
-
-                pass
-            r.glyph.line_color = self.colors[0]
-
-            ds.data["color"] = self.colors
+            if r.name != "reg_line" and r.name != "error":
+                ds.data["color"] = self.colors
 
     def change_palette_hist(self, attr, old, new):
         """
@@ -370,22 +371,10 @@ class GraphPlot:
 
             self.reg_err_check.disabled = False
 
-            if self.group is not None:
+            renderer = [r for r in self.p.renderers if r.name == "reg_line"]
+            for r in renderer:
 
-                for k in self.source.keys():
-
-                    reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source[k].data["x"],
-                                                                               self.source[k].data["y"])
-
-                    temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source[k].data["color"]))
-                    self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
-
-            else:
-
-                reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source.data["x"],
-                                                                           self.source.data["y"])
-                temp_source = ColumnDataSource(data=dict(x=reg_x, y=reg_y, color=self.source.data["color"]))
-                self.p.line("x", "y", line_color=temp_source.data["color"][0], source=temp_source, name="reg")
+                r.visible = True
 
         else:
 
@@ -393,56 +382,31 @@ class GraphPlot:
 
             for r in renderer:
 
-                if r.name == "reg" or r.name == "error":
+                if r.name == "reg_line" or r.name == "error":
 
-                    self.p.renderers.remove(r)
+                    r.visible = False
 
             self.reg_err_check.active = [1]
             self.reg_err_check.disabled = True
 
     def add_reg_error(self, attr, old, new):
 
+        renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
+
         if new == [0]:
-
-            if self.group is not None:
-
-                for k in self.source.keys():
-
-                    reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source[k].data["x"],
-                                                                               self.source[k].data["y"])
-
-                    bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
-                    band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
-                    bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
-
-                    patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source[k].data["color"] * 2))
-
-                    self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.2, source=patch_source,
-                                 name="error")
-
-            else:
-
-                reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source.data["x"],
-                                                                           self.source.data["y"])
-
-                bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
-                band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
-                bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
-
-                patch_source = ColumnDataSource(data=dict(x=band_x, y=bounds, color=self.source.data["color"] * 2))
-
-                self.p.patch("x", "y", color=patch_source.data["color"][0], alpha=.5, source=patch_source,
-                             name="error")
-
-        else:
-
-            renderer = [r for r in self.p.renderers if isinstance(r, GlyphRenderer)]
 
             for r in renderer:
 
                 if r.name == "error":
 
-                    self.p.renderers.remove(r)
+                    r.visible = True
+        else:
+
+            for r in renderer:
+
+                if r.name == "error":
+
+                    r.visible = False
 
     def update(self, x, y, c, g=None, source=None):
         """
@@ -513,9 +477,27 @@ class GraphPlot:
             for k in self.source.keys():
 
                 self.p.scatter("x", "y", color="color", source=self.source[k])
+                reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source[k].data["x"],
+                                                                           self.source[k].data["y"])
+
+                self.p.line(reg_x, reg_y, name="reg_line", color=self.source[k].data["color"][0])
+
+                bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+                band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
+                bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
+
+                self.p.patch(band_x, bounds, color=self.source[k].data["color"][0], alpha=.2, name="error")
+                rends = [r for r in self.p.renderers]
+
+                for r in rends:
+
+                    if r.name in ["reg_line", "error"]:
+
+                        r.visible = False
 
             legend = Legend(items=[*list(zip(list(self.source.keys()),
-                                             [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)]))],
+                                             [[r] for r in self.p.renderers if isinstance(r, GlyphRenderer)
+                                              and r.name not in ["reg_line", "error"]]))],
                             location=(0, -30))
 
             self.p.add_layout(legend, 'left')
@@ -524,6 +506,22 @@ class GraphPlot:
 
             self.p.scatter('x', 'y', color="color", source=self.source)
 
+            reg_x, reg_y, pred_upper, pred_lower = get_regression_line(self.source.data["x"], self.source.data["y"])
+
+            self.p.line(reg_x, reg_y, name="reg_line", color=self.source.data["color"][0])
+
+            bands = sorted(list(zip(pred_upper.tolist(), pred_lower.tolist(), reg_x)), key=lambda z: z[2])
+            band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
+            bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
+
+            self.p.patch(band_x, bounds, color=self.source[k].data["color"][0], alpha=.2, name="error")
+            rends = [r for r in self.p.renderers]
+
+            for r in rends:
+
+                if r.name in ["reg_line", "error"]:
+
+                    r.visible = False
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
@@ -710,8 +708,9 @@ class GraphPlot:
 # df = pd.read_csv("iris.csv")
 #
 # gp = GraphPlot(df["Sepal_Length"], df["Sepal_Width"], group=df["Species"])#, group=df["Tests Failed"])#, x_axis_type="datetime")
-
+#
 # app_layout = gp.plot_histogram(7)
+# app_layout = gp.plot_scatter()
 
 
 # doc = curdoc()

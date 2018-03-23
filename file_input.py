@@ -15,6 +15,7 @@ import io
 import base64
 
 import graphs
+import test
 
 
 class ImportData:
@@ -132,21 +133,31 @@ class ImportData:
 
             app_layout = gp.plot_scatter()
 
-        elif plot_type == "Line":
 
-            app_layout = gp.plot_line()
-
-        elif plot_type == "Bar":
-
-            app_layout = gp.plot_bar()
-
-        elif plot_type == "Histogram":
-
-            app_layout = gp.plot_histogram(7)
-
-        else:
-
-            app_layout = None
+        # if group is None:
+        #     gp = graphs.GraphPlot(x=self.df[x], y=self.df[y])
+        # else:
+        #     gp = graphs.GraphPlot(x=self.df[x], y=self.df[y], group=self.df[group])
+        #
+        # if plot_type == "Scatter":
+        #
+        #     app_layout = gp.plot_scatter()
+        #
+        # elif plot_type == "Line":
+        #
+        #     app_layout = gp.plot_line()
+        #
+        # elif plot_type == "Bar":
+        #
+        #     app_layout = gp.plot_bar()
+        #
+        # elif plot_type == "Histogram":
+        #
+        #     app_layout = gp.plot_histogram(7)
+        #
+        # else:
+        #
+        #     app_layout = None
 
         self.doc.clear()
 
