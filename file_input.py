@@ -77,15 +77,32 @@ class ImportData:
 
     def select_cols_x(self, attr, old, new):
 
-        self.x_drop.label = new
+        if new == "null":
+
+            self.x_drop.value = None
+            self.x_drop.label = "None"
+        else:
+            self.x_drop.label = new
 
     def select_cols_y(self, attr, old, new):
 
-        self.y_drop.label = new
+        if new == "null":
+
+            self.y_drop.value = None
+            self.y_drop.label = "None"
+
+        else:
+            self.y_drop.label = new
 
     def select_cols_g(self, attr, old, new):
 
-        self.g_drop.label = new
+        if new == "null":
+
+            self.g_drop.value = None
+            self.g_drop.label = "None"
+
+        else:
+            self.g_drop.label = new
 
     def load_preview(self):
         source = ColumnDataSource(data=dict())
