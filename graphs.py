@@ -36,74 +36,114 @@ class GraphPlot:
         self.plot_height = kwargs.get("plot_height", 600)
 
         self.file_source = ColumnDataSource({'file_contents': [], 'file_name': []})
+        if y is None:
 
-        if self.group is not None:
+            if self.group is not None:
 
-            self.x = x
-            self.y = y
+                self.x = x
 
-            # Gets the number of groups
-            self.num_colors = len(set(self.group))
+                # Gets the number of groups
+                self.num_colors = len(set(self.group))
 
-            # Get the colors for the groups and assign then
-            self.palettes = self.palette_maps(self.num_colors)
-            self.palette = self.palettes[kwargs.get("palette", "Accent")]
-            temp_df = pd.DataFrame(list(zip(self.x, self.y, self.group)),
-                                   columns=["x", "y", "group"])
-            temp_group = temp_df.groupby("group", as_index=False)
+                # Get the colors for the groups and assign then
+                self.palettes = self.palette_maps(self.num_colors)
+                self.palette = self.palettes[kwargs.get("palette", "Accent")]
+                temp_df = pd.DataFrame(list(zip(self.x, self.group)),
+                                       columns=["x", "group"])
+                temp_group = temp_df.groupby("group", as_index=False)
 
-            self.num_mod = floor(len(self.group) / len(self.palette))
-            self.colors = self.palette * self.num_mod
+                self.num_mod = floor(len(self.group) / len(self.palette))
+                self.colors = self.palette * self.num_mod
 
-            self.source = OrderedDict()
+                self.source = OrderedDict()
 
-            for g in temp_group.groups:
+                for g in temp_group.groups:
+                    tg = temp_group.get_group(g)
 
-                tg = temp_group.get_group(g)
+                    self.source.update({str(g): ColumnDataSource(data=dict(x=tg["x"].tolist(),
+                                                                           group=[g, ] * len(tg.x.index),
+                                                                           color=[self.palette[
+                                                                                      list(
+                                                                                          temp_group.groups.keys()).index(
+                                                                                          g)], ]
+                                                                                 * len(tg.index)))})
+            else:
+                self.x = x
+                self.palettes = self.palette_maps(1)
+                self.palette = self.palettes[kwargs.get("palette", "Accent")]
+                self.colors = self.palette * len(self.x)
 
-                self.source.update({str(g): ColumnDataSource(data=dict(x=tg["x"].tolist(), y=tg["y"].tolist(),
-                                                                  group=[g, ]*len(tg.x.index),
-                                                                  color=[self.palette[
-                                                                             list(temp_group.groups.keys()).index(g)],]
-                                                                        *len(tg.index)))})
+                self.source = ColumnDataSource(data=dict(x=self.x, color=self.colors))
+
         else:
 
-            # if y or x is not equal, 1 will be repeated
+            if self.group is not None:
 
-            if y.size != x.size:
+                self.x = x
+                self.y = y
 
-                # repeats the smaller column/list/array
-                if y.size % x.size == 0 or x.size % y.size == 0:
+                # Gets the number of groups
+                self.num_colors = len(set(self.group))
 
-                    if x.size > y.size:
+                # Get the colors for the groups and assign then
+                self.palettes = self.palette_maps(self.num_colors)
+                self.palette = self.palettes[kwargs.get("palette", "Accent")]
+                temp_df = pd.DataFrame(list(zip(self.x, self.y, self.group)),
+                                       columns=["x", "y", "group"])
+                temp_group = temp_df.groupby("group", as_index=False)
 
-                        self.x = x.values.flatten()
-                        self.y = y.repeat(x.size/y.size).values
+                self.num_mod = floor(len(self.group) / len(self.palette))
+                self.colors = self.palette * self.num_mod
 
-                    elif y.size > x.size:
+                self.source = OrderedDict()
 
-                        self.y = y.values.flatten()
-                        self.x = x.repeat(y.size / x.size).values
+                for g in temp_group.groups:
 
+                    tg = temp_group.get_group(g)
+
+                    self.source.update({str(g): ColumnDataSource(data=dict(x=tg["x"].tolist(), y=tg["y"].tolist(),
+                                                                      group=[g, ]*len(tg.x.index),
+                                                                      color=[self.palette[
+                                                                                 list(temp_group.groups.keys()).index(g)],]
+                                                                            *len(tg.index)))})
+            else:
+
+                # if y or x is not equal, 1 will be repeated
+
+                if y.size != x.size:
+
+                    # repeats the smaller column/list/array
+                    if y.size % x.size == 0 or x.size % y.size == 0:
+
+                        if x.size > y.size:
+
+                            self.x = x.values.flatten()
+                            self.y = y.repeat(x.size/y.size).values
+
+                        elif y.size > x.size:
+
+                            self.y = y.values.flatten()
+                            self.x = x.repeat(y.size / x.size).values
+
+                        self.palettes = self.palette_maps(1)
+                        self.palette = self.palettes[kwargs.get("palette", "Accent")]
+                        self.colors = self.palette * len(self.y)
+
+                        self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
+
+                    else:
+
+                        raise AttributeError("data provided in columns x and y need to have the same dimensions or be"
+                                             " divisible.")
+                else:
+
+                    self.x = x
+                    self.y = y
                     self.palettes = self.palette_maps(1)
                     self.palette = self.palettes[kwargs.get("palette", "Accent")]
                     self.colors = self.palette * len(self.y)
 
                     self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
-
-                else:
-
-                    raise AttributeError("data provided in columns x and y need to have the same dimensions or be"
-                                         " divisible.")
-            else:
-
-                self.x = x
-                self.y = y
-                self.palettes = self.palette_maps(1)
-                self.palette = self.palettes[kwargs.get("palette", "Accent")]
-                self.colors = self.palette * len(self.y)
-
-                self.source = ColumnDataSource(data=dict(x=self.x, y=self.y, color=self.colors))
 
         self.graph = None
         self.p = None
@@ -241,18 +281,36 @@ class GraphPlot:
                 self.p.renderers.remove(r)
 
             for k in self.source.keys():
+                cuts = pd.Series(pd.cut(self.source[k].data["x"], new)).str.replace("\(|\]", "").str.split(", ",
+                                                                                                           expand=True).astype(
+                    float)
 
-                cuts = pd.Series(pd.cut(self.source[k].data["x"], new)).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
-                cuts["y"] = self.source[k].data["y"]
+                cuts = cuts.groupby([0, 1], as_index=False).size().reset_index(name="freq")
 
-                cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
-
-                self.hist_source= ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
-                                                             freq=cuts["freq"].tolist(),
-                                                             color=[self.source[k].data["color"][0], ] * len(cuts.index)))
+                self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
+                                                              freq=cuts["freq"].tolist(),
+                                                              color=[self.source[k].data["color"][0], ] * len(
+                                                                  cuts.index)))
 
                 self.p.quad(left="min", right="max", bottom=0, top="freq", source=self.hist_source, line_color="black",
                             color="color")
+        else:
+
+            for r in renderer:
+
+                self.p.renderers.remove(r)
+
+            cuts = pd.cut(self.source.data["x"], new).str.replace("\(|\]", "").str.split(", ", expand=True).astype(
+                float)
+
+            cuts = cuts.groupby([0, 1], as_index=False).size().reset_index(name="freq")
+
+            self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
+                                                          freq=cuts["freq"].tolist(),
+                                                          color=[self.source.data["color"][0], ] * len(cuts.index)))
+
+            self.p.quad(left="min", right="max", bottom=0, top="freq", source=self.hist_source, line_color="black",
+                        color="color")
 
     def change_palette_bar(self, attr, old, new):
 
@@ -653,9 +711,8 @@ class GraphPlot:
             for k in self.source.keys():
 
                 cuts = pd.Series(pd.cut(self.source[k].data["x"], bins)).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
-                cuts["y"] = self.source[k].data["y"]
 
-                cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
+                cuts = cuts.groupby([0, 1], as_index=False).size().reset_index(name="freq")
 
                 self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
                                                          freq=cuts["freq"].tolist(),
@@ -667,9 +724,8 @@ class GraphPlot:
         else:
 
             cuts = pd.cut(self.source.data["x"], bins).str.replace("\(|\]", "").str.split(", ", expand=True).astype(float)
-            cuts["y"] = self.source.data["y"]
 
-            cuts = cuts.groupby([0, 1], as_index=False)["y"].size().reset_index(name="freq")
+            cuts = cuts.groupby([0, 1], as_index=False).size().reset_index(name="freq")
 
             self.hist_source = ColumnDataSource(data=dict(min=cuts[0].tolist(), max=cuts[1].tolist(),
                                                      freq=cuts["freq"].tolist(),

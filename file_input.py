@@ -150,10 +150,17 @@ class ImportData:
 
         plot_type = self.plot_type.labels[self.plot_type.active]
 
-        if group is None:
+        if group is None and y is not None:
             gp = graphs.GraphPlot(x=self.df[x], y=self.df[y])
-        else:
+        elif group is not None and y is not None:
             gp = graphs.GraphPlot(x=self.df[x], y=self.df[y], group=self.df[group])
+        elif group is not None and y is None:
+            gp = graphs.GraphPlot(x=self.df[x], y=None, group=self.df[group])
+        elif group is None and y is None:
+            gp = graphs.GraphPlot(x=self.df[x], y=None)
+        else:
+
+            pass
 
         if plot_type == "Scatter":
 
