@@ -418,6 +418,7 @@ class GraphPlot:
                     r.glyph.fill_alpha = new*.2
 
                 else:
+
                     r.glyph.fill_alpha = new
 
             except AttributeError:
@@ -572,7 +573,7 @@ class GraphPlot:
             band_x = [t[2] for t in bands] + [t[2] for t in bands][::-1]
             bounds = [t[1] for t in bands] + [t[0] for t in bands][::-1]
 
-            self.p.patch(band_x, bounds, color=self.source[k].data["color"][0], alpha=.2, name="error")
+            self.p.patch(band_x, bounds, color=self.source.data["color"][0], alpha=.2, name="error")
             rends = [r for r in self.p.renderers]
 
             for r in rends:
