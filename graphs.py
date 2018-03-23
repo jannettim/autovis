@@ -644,16 +644,19 @@ class GraphPlot:
 
         select_pal = Select(options=[c for c in pyplot.colormaps() if c != "jet"])
         title_text = TextInput(placeholder="Figure Title")
+        alpha_slider = Slider(start=0, end=1, value=1, step=.01, title="Transparency")
 
         select_pal.on_change("value", self.change_palette_bar)
         y_axis_label.on_change("value", self.change_figure_yaxis)
         x_axis_label.on_change("value", self.change_figure_xaxis)
         title_text.on_change("value", self.change_figure_title)
+        alpha_slider.on_change("value", self.change_glyph_alpha)
 
         app_layout = layout([[select_pal],
                              [title_text],
                              [y_axis_label, self.p],
-                             [Spacer(height=10, width=500), x_axis_label],])
+                             [Spacer(height=10, width=500), x_axis_label],
+                             [alpha_slider]])
 
         return app_layout
 
