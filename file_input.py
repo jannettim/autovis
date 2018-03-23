@@ -15,7 +15,6 @@ import io
 import base64
 
 import graphs
-import test
 
 
 class ImportData:
@@ -76,6 +75,18 @@ class ImportData:
 
         self.file_source.on_change('data', self.file_callback)
 
+    def select_cols_x(self, attr, old, new):
+
+        self.x_drop.label = new
+
+    def select_cols_y(self, attr, old, new):
+
+        self.y_drop.label = new
+
+    def select_cols_g(self, attr, old, new):
+
+        self.g_drop.label = new
+
     def load_preview(self):
         source = ColumnDataSource(data=dict())
         columns = []
@@ -86,15 +97,19 @@ class ImportData:
 
         self.dt.source = source
         self.dt.columns = columns
-        self.x_drop.labels = self.df.columns.tolist()
-        self.y_drop.labels = self.df.columns.tolist()
-        self.g_drop.labels = self.df.columns.tolist()
+        self.x_drop.menu = [("None", None)] + list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
+        self.y_drop.menu = [("None", None)] + list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
+        self.g_drop.menu = [("None", None)] + list(zip(self.df.columns.tolist(), self.df.columns.tolist()))
         self.doc.add_root(row([self.dt]))
         self.doc.add_root(row([self.x_label, self.y_label, self.g_label]))
         self.doc.add_root(row([self.x_drop, self.y_drop, self.g_drop]))
         self.doc.add_root(row([self.plot_label]))
         self.doc.add_root(row([self.plot_type]))
         self.doc.add_root(row([self.submit]))
+
+        self.x_drop.on_change("value", self.select_cols_x)
+        self.y_drop.on_change("value", self.select_cols_y)
+        self.g_drop.on_change("value", self.select_cols_g)
         self.submit.on_click(self.submit_callback)
 
     def file_callback(self, attr, old, new):
@@ -112,15 +127,9 @@ class ImportData:
 
     def submit_callback(self):
 
-        x = self.x_drop.labels[self.x_drop.active]
-        y = self.y_drop.labels[self.y_drop.active]
-
-        try:
-            group = self.g_drop.labels[self.g_drop.active]
-
-        except TypeError:
-
-            group = None
+        x = self.x_drop.value
+        y = self.y_drop.value
+        group = self.g_drop.value
 
         plot_type = self.plot_type.labels[self.plot_type.active]
 
@@ -133,31 +142,21 @@ class ImportData:
 
             app_layout = gp.plot_scatter()
 
+        elif plot_type == "Line":
 
-        # if group is None:
-        #     gp = graphs.GraphPlot(x=self.df[x], y=self.df[y])
-        # else:
-        #     gp = graphs.GraphPlot(x=self.df[x], y=self.df[y], group=self.df[group])
-        #
-        # if plot_type == "Scatter":
-        #
-        #     app_layout = gp.plot_scatter()
-        #
-        # elif plot_type == "Line":
-        #
-        #     app_layout = gp.plot_line()
-        #
-        # elif plot_type == "Bar":
-        #
-        #     app_layout = gp.plot_bar()
-        #
-        # elif plot_type == "Histogram":
-        #
-        #     app_layout = gp.plot_histogram(7)
-        #
-        # else:
-        #
-        #     app_layout = None
+            app_layout = gp.plot_line()
+
+        elif plot_type == "Bar":
+
+            app_layout = gp.plot_bar()
+
+        elif plot_type == "Histogram":
+
+            app_layout = gp.plot_histogram(7)
+
+        else:
+
+            app_layout = None
 
         self.doc.clear()
 
