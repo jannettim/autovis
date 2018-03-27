@@ -1,4 +1,4 @@
-from bokeh.models import ColumnDataSource, CustomJS, Button, DataTable, TableColumn, Dropdown, PreText, RadioButtonGroup
+from bokeh.models import Button, DataTable, Dropdown, PreText, RadioButtonGroup
 from bokeh.layouts import layout
 from bokeh.plotting import curdoc
 

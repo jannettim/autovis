@@ -8,7 +8,7 @@ https://github.com/bokeh/bokeh/issues/6096
 """
 
 import pandas as pd
-from bokeh.models import ColumnDataSource, CustomJS, DataTable, TableColumn
+from bokeh.models import ColumnDataSource, CustomJS, TableColumn
 from bokeh.layouts import row
 
 import io

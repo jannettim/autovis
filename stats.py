@@ -1,6 +1,4 @@
-from sklearn import datasets
 import statsmodels.api as sm
-import pandas as pd
 from statsmodels.sandbox.regression.predstd import wls_prediction_std
 
 

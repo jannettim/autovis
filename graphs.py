@@ -7,11 +7,7 @@ from matplotlib import pyplot
 from bokeh.layouts import layout, row, Spacer
 from math import floor, ceil
 import pandas as pd
-from sklearn import datasets
 from stats import get_regression_line
-
-# from file_input import ImportData
-# from functools import partial
 
 
 class GraphPlot:
