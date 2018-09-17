@@ -2,7 +2,7 @@
 
 Tool currently in development to allow to tweaking of chart features and then export final results.
 
-###Requirements
+### Requirements
 
 Python 3 (tested on python 3.5)
 
@@ -12,7 +12,7 @@ Pandas
 
 Statsmodels
 
-###Usage
+### Usage
 
 1. Clone repository
 2. Open terminal
